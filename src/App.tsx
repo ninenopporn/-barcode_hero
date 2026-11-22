@@ -41,14 +41,13 @@ interface SavedBarcode {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'templates' | 'a4-print' | 'ai' | 'history'>('single');
+  const [activeTab, setActiveTab] = useState<'single' | 'a4-print' | 'bulk' | 'templates' | 'ai' | 'history'>('single');
   
   // Single Barcode State
   const [symbology, setSymbology] = useState<string>('CODE128');
   const [value, setValue] = useState<string>('885' + Math.floor(100000000 + Math.random() * 900000000));
   const [title, setTitle] = useState<string>('สินค้าพรีเมียม (Premium Item)');
   const [price, setPrice] = useState<string>('299');
-  const [sku, setSku] = useState<string>('SKU-' + Math.floor(1000 + Math.random() * 9000));
   const [barWidth, setBarWidth] = useState<number>(2);
   const [barHeight, setBarHeight] = useState<number>(80);
   const [lineColor, setLineColor] = useState<string>('#0f172a');
@@ -64,12 +63,12 @@ export default function App() {
   const [a4Rows, setA4Rows] = useState<number>(7);
   const [a4Quantity, setA4Quantity] = useState<number>(21);
   const [showCutLines, setShowCutLines] = useState<boolean>(true);
-  const [a4UniqueMode, setA4UniqueMode] = useState<boolean>(true); // True = Unique sequential/random codes per cell
+  const [a4Seed, setA4Seed] = useState<number>(Date.now()); // Triggers unique regeneration
 
   // Bulk Generator State
   const [bulkPrefix, setBulkPrefix] = useState<string>('PROD-');
   const [bulkStart, setBulkStart] = useState<number>(1);
-  const [bulkEnd, setBulkEnd] = useState<number>(10);
+  const [bulkEnd, setBulkEnd] = useState<number>(15);
   const [bulkList, setBulkList] = useState<{ value: string; name: string; price: string }[]>([]);
   const [bulkInputText, setBulkInputText] = useState<string>('เสื้อยืดคอกลม ไซส์ M, 199\nกางเกงยีนส์, 790\nรองเท้าผ้าใบ, 1290');
 
@@ -81,7 +80,7 @@ export default function App() {
   // History State
   const [history, setHistory] = useState<SavedBarcode[]>([]);
 
-  // Refs for rendering
+  // Refs for rendering single barcode / QR
   const barcodeSvgRef = useRef<SVGSVGElement | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -108,12 +107,12 @@ export default function App() {
     localStorage.setItem('barcodemaster_history', JSON.stringify(updated));
   };
 
-  // Function to randomize barcode value automatically based on symbology
+  // Auto-randomize unique value based on symbology
   const handleRandomizeValue = () => {
     let randVal = '';
+    const randomSuffix = Math.floor(100000000 + Math.random() * 900000000);
     if (symbology === 'EAN13') {
-      const randomDigits = Math.floor(100000000 + Math.random() * 900000000);
-      randVal = `885${randomDigits}`;
+      randVal = `885${randomSuffix}`;
     } else if (symbology === 'UPC') {
       randVal = String(Math.floor(100000000000 + Math.random() * 900000000000));
     } else if (symbology === 'CODE39') {
@@ -124,10 +123,10 @@ export default function App() {
       randVal = 'BAR-' + Math.floor(10000000 + Math.random() * 90000000);
     }
     setValue(randVal);
-    showToast('สุ่มรหัสบาร์โค้ดใหม่สำเร็จ: ' + randVal);
+    showToast('สุ่มรหัสบาร์โค้ดใหม่ (ไม่ซ้ำกัน): ' + randVal);
   };
 
-  // Render barcode or QR
+  // Render Single Barcode / QR
   useEffect(() => {
     if (symbology === 'QRCODE') {
       if (qrCanvasRef.current) {
@@ -167,7 +166,7 @@ export default function App() {
     }
   }, [symbology, value, barWidth, barHeight, lineColor, bgColor, showText, fontSize, margin]);
 
-  // Show notification toast
+  // Toast notification
   const showToast = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
@@ -286,20 +285,20 @@ export default function App() {
     window.print();
   };
 
-  // Generate Bulk List from Range with unique random values
+  // Generate Unique Bulk List
   const generateRangeBulk = () => {
     const list = [];
     for (let i = bulkStart; i <= bulkEnd; i++) {
       const paddedNum = String(i).padStart(3, '0');
-      const uniqueRand = Math.floor(10000000 + Math.random() * 90000000);
+      const uniqueNum = Math.floor(10000000 + Math.random() * 90000000);
       list.push({
-        value: `${bulkPrefix}${uniqueRand}`,
-        name: `สินค้าชุดที่ ${paddedNum}`,
-        price: '199'
+        value: `${bulkPrefix}${uniqueNum}`,
+        name: `สินค้า ${bulkPrefix}${paddedNum}`,
+        price: String(Math.floor(150 + Math.random() * 500))
       });
     }
     setBulkList(list);
-    showToast(`สร้างรายการบาร์โค้ดไม่ซ้ำกันจำนวน ${list.length} รายการสำเร็จ`);
+    showToast(`สุ่มสร้างบาร์โค้ดจำนวนมากแบบไม่ซ้ำกัน ${list.length} รายการสำเร็จ`);
   };
 
   // Parse Bulk Text
@@ -365,7 +364,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-slate-900">BarcodeMaster Pro</h1>
-            <p className="text-xs text-slate-500 hidden sm:block">ระบบสร้างและพิมพ์บาร์โค้ดมืออาชีพ</p>
+            <p className="text-xs text-slate-500 hidden sm:block">ระบบสร้าง สุ่ม และพิมพ์บาร์โค้ดอัจฉริยะ</p>
           </div>
         </div>
 
@@ -502,9 +501,9 @@ export default function App() {
                   </h2>
                   <button
                     onClick={handleRandomizeValue}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all shadow-sm"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all shadow-sm"
                   >
-                    <Shuffle className="w-3.5 h-3.5" /> สุ่มตัวเลขบาร์โค้ดอัตโนมัติ
+                    <Shuffle className="w-3.5 h-3.5" /> สุ่มตัวเลขรหัสใหม่
                   </button>
                 </div>
 
@@ -742,8 +741,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => {
-                    // Force re-render trigger for unique items
-                    setA4Quantity((prev) => prev);
+                    setA4Seed(Date.now());
                     showToast('สุ่มชุดรหัสไม่ซ้ำกันใหม่บนหน้า A4 แล้ว');
                   }}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 shadow-sm"
@@ -842,8 +840,8 @@ export default function App() {
                     }}
                   >
                     {Array.from({ length: a4Quantity }).map((_, idx) => {
-                      // Generate a unique code for each cell index
-                      const uniqueCellCode = `885${String(Math.floor(100000000 + (idx * 137) + (Math.random() * 899999999)) % 900000000 + 100000000)}`;
+                      // Generate a unique code for each cell index using a4Seed
+                      const uniqueCellCode = `885${String(Math.floor(100000000 + (idx * 397) + a4Seed + (Math.random() * 899999999)) % 900000000 + 100000000)}`;
                       return (
                         <div
                           key={idx}

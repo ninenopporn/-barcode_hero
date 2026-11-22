@@ -1,0 +1,6 @@
+{
+  "name": "BarcodeMaster Pro",
+  "description": "Professional barcode and QR code generator with batch creation, custom styling, product label templates, thermal printing, and AI assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

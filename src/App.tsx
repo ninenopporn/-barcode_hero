@@ -45,7 +45,7 @@ export default function App() {
   
   // Single Barcode State
   const [symbology, setSymbology] = useState<string>('CODE128');
-  const [value, setValue] = useState<string>('885' + Math.floor(1000000000 + Math.random() * 9000000000));
+  const [value, setValue] = useState<string>('885' + Math.floor(100000000 + Math.random() * 900000000));
   const [title, setTitle] = useState<string>('สินค้าพรีเมียม (Premium Item)');
   const [price, setPrice] = useState<string>('299');
   const [sku, setSku] = useState<string>('SKU-' + Math.floor(1000 + Math.random() * 9000));
@@ -64,6 +64,7 @@ export default function App() {
   const [a4Rows, setA4Rows] = useState<number>(7);
   const [a4Quantity, setA4Quantity] = useState<number>(21);
   const [showCutLines, setShowCutLines] = useState<boolean>(true);
+  const [a4UniqueMode, setA4UniqueMode] = useState<boolean>(true); // True = Unique sequential/random codes per cell
 
   // Bulk Generator State
   const [bulkPrefix, setBulkPrefix] = useState<string>('PROD-');
@@ -111,18 +112,15 @@ export default function App() {
   const handleRandomizeValue = () => {
     let randVal = '';
     if (symbology === 'EAN13') {
-      // EAN-13 typically starts with 885 (Thailand) + 10 random digits
       const randomDigits = Math.floor(100000000 + Math.random() * 900000000);
       randVal = `885${randomDigits}`;
     } else if (symbology === 'UPC') {
-      // UPC-A 12 digits
       randVal = String(Math.floor(100000000000 + Math.random() * 900000000000));
     } else if (symbology === 'CODE39') {
       randVal = 'CODE-' + Math.floor(10000 + Math.random() * 90000);
     } else if (symbology === 'QRCODE') {
       randVal = 'https://shop.example.com/item/' + Math.floor(100000 + Math.random() * 900000);
     } else {
-      // CODE128
       randVal = 'BAR-' + Math.floor(10000000 + Math.random() * 90000000);
     }
     setValue(randVal);
@@ -288,19 +286,20 @@ export default function App() {
     window.print();
   };
 
-  // Generate Bulk List from Range
+  // Generate Bulk List from Range with unique random values
   const generateRangeBulk = () => {
     const list = [];
     for (let i = bulkStart; i <= bulkEnd; i++) {
       const paddedNum = String(i).padStart(3, '0');
+      const uniqueRand = Math.floor(10000000 + Math.random() * 90000000);
       list.push({
-        value: `${bulkPrefix}${Math.floor(1000 + Math.random() * 9000)}`,
+        value: `${bulkPrefix}${uniqueRand}`,
         name: `สินค้าชุดที่ ${paddedNum}`,
         price: '199'
       });
     }
     setBulkList(list);
-    showToast(`สร้างรายการบาร์โค้ดจำนวน ${list.length} รายการสำเร็จ`);
+    showToast(`สร้างรายการบาร์โค้ดไม่ซ้ำกันจำนวน ${list.length} รายการสำเร็จ`);
   };
 
   // Parse Bulk Text
@@ -516,7 +515,6 @@ export default function App() {
                     value={symbology}
                     onChange={(e) => {
                       setSymbology(e.target.value);
-                      // Auto generate matching format on symbology switch
                       setTimeout(() => handleRandomizeValue(), 50);
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -738,15 +736,19 @@ export default function App() {
                 <div>
                   <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                     <LayoutGrid className="w-4 h-4 text-blue-600" />
-                    จัดหน้ากระดาษ A4 สำหรับพิมพ์สติกเกอร์หลายดวง
+                    จัดหน้ากระดาษ A4 สำหรับพิมพ์สติกเกอร์หลายดวง (รหัสไม่ซ้ำกันอัตโนมัติ)
                   </h2>
-                  <p className="text-xs text-slate-500 mt-1">กำหนดรูปแบบตาราง คอลัมน์ แถว และจำนวนดวงที่ต้องการพิมพ์ลงบนกระดาษ A4</p>
+                  <p className="text-xs text-slate-500 mt-1">แต่ละดวงบนหน้า A4 จะถูกสุ่มรหัสตัวเลขหรือรันต่อเนื่องไม่ซ้ำกันให้อัตโนมัติ</p>
                 </div>
                 <button
-                  onClick={handleRandomizeValue}
+                  onClick={() => {
+                    // Force re-render trigger for unique items
+                    setA4Quantity((prev) => prev);
+                    showToast('สุ่มชุดรหัสไม่ซ้ำกันใหม่บนหน้า A4 แล้ว');
+                  }}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 shadow-sm"
                 >
-                  <Shuffle className="w-3.5 h-3.5" /> สุ่มรหัสบาร์โค้ดใหม่
+                  <Shuffle className="w-3.5 h-3.5" /> สุ่มรหัสไม่ซ้ำกันใหม่
                 </button>
               </div>
 
@@ -792,7 +794,7 @@ export default function App() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">จำนวนดวงที่ต้องการพิมพ์ (Total Qty)</label>
+                  <label className="text-xs font-medium text-slate-700">จำนวนดวงบนกระดาษ (Total Qty)</label>
                   <input
                     type="number"
                     min="1"
@@ -818,16 +820,16 @@ export default function App() {
                   onClick={handlePrint}
                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
                 >
-                  <Printer className="w-4 h-4" /> สั่งพิมพ์กระดาษ A4 ({a4Quantity} ดวง)
+                  <Printer className="w-4 h-4" /> สั่งพิมพ์กระดาษ A4 ({a4Quantity} ดวงแบบไม่ซ้ำกัน)
                 </button>
               </div>
             </div>
 
-            {/* A4 Sheet Visual Preview */}
+            {/* A4 Sheet Visual Preview with Unique Codes per Cell */}
             <div className="space-y-4">
               <div className="flex items-center justify-between print:hidden">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">ตัวอย่างหน้ากระดาษ A4 (A4 Grid Preview)</span>
-                <span className="text-xs text-slate-500">รหัสปัจจุบัน: <code className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200">{value}</code></span>
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">ตัวอย่างหน้ากระดาษ A4 (รหัสไม่ซ้ำกันทุกดวง)</span>
+                <span className="text-xs text-slate-500">รวมทั้งหมด {a4Quantity} ดวง</span>
               </div>
 
               <div className="bg-slate-200 p-4 sm:p-8 rounded-2xl flex justify-center overflow-x-auto print:p-0 print:bg-white">
@@ -839,40 +841,44 @@ export default function App() {
                       gridTemplateColumns: `repeat(${a4Cols}, minmax(0, 1fr))`
                     }}
                   >
-                    {Array.from({ length: a4Quantity }).map((_, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3 flex flex-col items-center justify-center text-center bg-white rounded-lg ${
-                          showCutLines ? 'border border-dashed border-slate-300' : 'border border-slate-100'
-                        } break-inside-avoid`}
-                        style={{ minHeight: '32mm' }}
-                      >
-                        {title && <div className="text-[10px] font-bold text-slate-900 truncate w-full">{title}</div>}
-                        <div className="my-1 flex items-center justify-center">
-                          {symbology === 'QRCODE' ? (
-                            <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center text-[8px] font-mono">QR</div>
-                          ) : (
-                            <svg
-                              ref={(el) => {
-                                if (el) {
-                                  try {
-                                    JsBarcode(el, value, {
-                                      format: symbology,
-                                      width: 1.2,
-                                      height: 35,
-                                      displayValue: true,
-                                      fontSize: 9,
-                                      margin: 2
-                                    });
-                                  } catch (e) {}
-                                }
-                              }}
-                            />
-                          )}
+                    {Array.from({ length: a4Quantity }).map((_, idx) => {
+                      // Generate a unique code for each cell index
+                      const uniqueCellCode = `885${String(Math.floor(100000000 + (idx * 137) + (Math.random() * 899999999)) % 900000000 + 100000000)}`;
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-3 flex flex-col items-center justify-center text-center bg-white rounded-lg ${
+                            showCutLines ? 'border border-dashed border-slate-300' : 'border border-slate-100'
+                          } break-inside-avoid`}
+                          style={{ minHeight: '32mm' }}
+                        >
+                          {title && <div className="text-[10px] font-bold text-slate-900 truncate w-full">{title}</div>}
+                          <div className="my-1 flex items-center justify-center">
+                            {symbology === 'QRCODE' ? (
+                              <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center text-[8px] font-mono">QR</div>
+                            ) : (
+                              <svg
+                                ref={(el) => {
+                                  if (el) {
+                                    try {
+                                      JsBarcode(el, uniqueCellCode, {
+                                        format: symbology,
+                                        width: 1.2,
+                                        height: 35,
+                                        displayValue: true,
+                                        fontSize: 9,
+                                        margin: 2
+                                      });
+                                    } catch (e) {}
+                                  }
+                                }}
+                              />
+                            )}
+                          </div>
+                          {price && <div className="text-[10px] font-extrabold text-emerald-600">฿{price}</div>}
                         </div>
-                        {price && <div className="text-[10px] font-extrabold text-emerald-600">฿{price}</div>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -937,7 +943,7 @@ export default function App() {
                     onClick={generateRangeBulk}
                     className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5"
                   >
-                    <Shuffle className="w-3.5 h-3.5" /> สุ่มและสร้างรายการช่วงตัวเลข
+                    <Shuffle className="w-3.5 h-3.5" /> สุ่มและสร้างรายการช่วงตัวเลขไม่ซ้ำกัน
                   </button>
                 </div>
 

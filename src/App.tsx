@@ -26,7 +26,8 @@ import {
   HelpCircle,
   ArrowRight,
   Maximize2,
-  LayoutGrid
+  LayoutGrid,
+  Shuffle
 } from 'lucide-react';
 
 interface SavedBarcode {
@@ -44,10 +45,10 @@ export default function App() {
   
   // Single Barcode State
   const [symbology, setSymbology] = useState<string>('CODE128');
-  const [value, setValue] = useState<string>('BARCODE-123456');
+  const [value, setValue] = useState<string>('885' + Math.floor(1000000000 + Math.random() * 9000000000));
   const [title, setTitle] = useState<string>('สินค้าพรีเมียม (Premium Item)');
   const [price, setPrice] = useState<string>('299');
-  const [sku, setSku] = useState<string>('SKU-98765');
+  const [sku, setSku] = useState<string>('SKU-' + Math.floor(1000 + Math.random() * 9000));
   const [barWidth, setBarWidth] = useState<number>(2);
   const [barHeight, setBarHeight] = useState<number>(80);
   const [lineColor, setLineColor] = useState<string>('#0f172a');
@@ -104,6 +105,28 @@ export default function App() {
     const updated = [newItem, ...history.slice(0, 49)];
     setHistory(updated);
     localStorage.setItem('barcodemaster_history', JSON.stringify(updated));
+  };
+
+  // Function to randomize barcode value automatically based on symbology
+  const handleRandomizeValue = () => {
+    let randVal = '';
+    if (symbology === 'EAN13') {
+      // EAN-13 typically starts with 885 (Thailand) + 10 random digits
+      const randomDigits = Math.floor(100000000 + Math.random() * 900000000);
+      randVal = `885${randomDigits}`;
+    } else if (symbology === 'UPC') {
+      // UPC-A 12 digits
+      randVal = String(Math.floor(100000000000 + Math.random() * 900000000000));
+    } else if (symbology === 'CODE39') {
+      randVal = 'CODE-' + Math.floor(10000 + Math.random() * 90000);
+    } else if (symbology === 'QRCODE') {
+      randVal = 'https://shop.example.com/item/' + Math.floor(100000 + Math.random() * 900000);
+    } else {
+      // CODE128
+      randVal = 'BAR-' + Math.floor(10000000 + Math.random() * 90000000);
+    }
+    setValue(randVal);
+    showToast('สุ่มรหัสบาร์โค้ดใหม่สำเร็จ: ' + randVal);
   };
 
   // Render barcode or QR
@@ -271,7 +294,7 @@ export default function App() {
     for (let i = bulkStart; i <= bulkEnd; i++) {
       const paddedNum = String(i).padStart(3, '0');
       list.push({
-        value: `${bulkPrefix}${paddedNum}`,
+        value: `${bulkPrefix}${Math.floor(1000 + Math.random() * 9000)}`,
         name: `สินค้าชุดที่ ${paddedNum}`,
         price: '199'
       });
@@ -478,7 +501,12 @@ export default function App() {
                     <Tag className="w-4 h-4 text-slate-600" />
                     ตั้งค่าบาร์โค้ดและข้อมูลสินค้า
                   </h2>
-                  <span className="text-xs text-slate-500 font-mono">1D & 2D Symbologies</span>
+                  <button
+                    onClick={handleRandomizeValue}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all shadow-sm"
+                  >
+                    <Shuffle className="w-3.5 h-3.5" /> สุ่มตัวเลขบาร์โค้ดอัตโนมัติ
+                  </button>
                 </div>
 
                 {/* Symbology selection */}
@@ -486,7 +514,11 @@ export default function App() {
                   <label className="text-xs font-medium text-slate-700">รูปแบบบาร์โค้ด (Symbology)</label>
                   <select
                     value={symbology}
-                    onChange={(e) => setSymbology(e.target.value)}
+                    onChange={(e) => {
+                      setSymbology(e.target.value);
+                      // Auto generate matching format on symbology switch
+                      setTimeout(() => handleRandomizeValue(), 50);
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none"
                   >
                     <optgroup label="มาตรฐาน 1 มิติ (1D Barcodes)">
@@ -515,11 +547,10 @@ export default function App() {
                       className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                     />
                     <button
-                      onClick={() => setValue('BARCODE-' + Math.floor(100000 + Math.random() * 900000))}
-                      className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl transition-colors flex items-center gap-1"
-                      title="สุ่มรหัส"
+                      onClick={handleRandomizeValue}
+                      className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 shadow-sm"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> สุ่ม
+                      <Shuffle className="w-3.5 h-3.5" /> สุ่มรหัส
                     </button>
                   </div>
                 </div>
@@ -703,12 +734,20 @@ export default function App() {
         {activeTab === 'a4-print' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6 print:hidden">
-              <div className="border-b border-slate-100 pb-4">
-                <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                  <LayoutGrid className="w-4 h-4 text-blue-600" />
-                  จัดหน้ากระดาษ A4 สำหรับพิมพ์สติกเกอร์หลายดวง
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">กำหนดรูปแบบตาราง คอลัมน์ แถว และจำนวนดวงที่ต้องการพิมพ์ลงบนกระดาษ A4 1 แผ่นหรือหลายแผ่น</p>
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 text-blue-600" />
+                    จัดหน้ากระดาษ A4 สำหรับพิมพ์สติกเกอร์หลายดวง
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">กำหนดรูปแบบตาราง คอลัมน์ แถว และจำนวนดวงที่ต้องการพิมพ์ลงบนกระดาษ A4</p>
+                </div>
+                <button
+                  onClick={handleRandomizeValue}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 shadow-sm"
+                >
+                  <Shuffle className="w-3.5 h-3.5" /> สุ่มรหัสบาร์โค้ดใหม่
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -788,7 +827,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex items-center justify-between print:hidden">
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">ตัวอย่างหน้ากระดาษ A4 (A4 Grid Preview)</span>
-                <span className="text-xs text-slate-500">รวมทั้งหมด {a4Quantity} ดวง / พิมพ์ลงกระดาษ A4</span>
+                <span className="text-xs text-slate-500">รหัสปัจจุบัน: <code className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200">{value}</code></span>
               </div>
 
               <div className="bg-slate-200 p-4 sm:p-8 rounded-2xl flex justify-center overflow-x-auto print:p-0 print:bg-white">
@@ -845,12 +884,20 @@ export default function App() {
         {activeTab === 'bulk' && (
           <div className="space-y-8">
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6 print:hidden">
-              <div className="border-b border-slate-100 pb-4">
-                <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-slate-600" />
-                  สร้างบาร์โค้ดจำนวนมาก (Bulk Generator)
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">สร้างรหัสบาร์โค้ดต่อเนื่องตามช่วงตัวเลข หรือวางข้อมูลจากตาราง/CSV</p>
+              <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-slate-600" />
+                    สร้างบาร์โค้ดจำนวนมาก (Bulk Generator)
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">สร้างรหัสบาร์โค้ดสุ่มต่อเนื่องตามช่วงตัวเลข หรือวางข้อมูลจากตาราง/CSV</p>
+                </div>
+                <button
+                  onClick={generateRangeBulk}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 shadow-sm"
+                >
+                  <Shuffle className="w-3.5 h-3.5" /> สุ่มรหัสชุดใหม่ทั้งหมด
+                </button>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -888,9 +935,9 @@ export default function App() {
                   </div>
                   <button
                     onClick={generateRangeBulk}
-                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5"
                   >
-                    สร้างรายการช่วงตัวเลข
+                    <Shuffle className="w-3.5 h-3.5" /> สุ่มและสร้างรายการช่วงตัวเลข
                   </button>
                 </div>
 

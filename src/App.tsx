@@ -25,7 +25,8 @@ import {
   FileSpreadsheet,
   HelpCircle,
   ArrowRight,
-  Maximize2
+  Maximize2,
+  LayoutGrid
 } from 'lucide-react';
 
 interface SavedBarcode {
@@ -39,7 +40,7 @@ interface SavedBarcode {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'templates' | 'ai' | 'history'>('single');
+  const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'templates' | 'a4-print' | 'ai' | 'history'>('single');
   
   // Single Barcode State
   const [symbology, setSymbology] = useState<string>('CODE128');
@@ -48,14 +49,20 @@ export default function App() {
   const [price, setPrice] = useState<string>('299');
   const [sku, setSku] = useState<string>('SKU-98765');
   const [barWidth, setBarWidth] = useState<number>(2);
-  const [barHeight, setBarHeight] = useState<number>(100);
+  const [barHeight, setBarHeight] = useState<number>(80);
   const [lineColor, setLineColor] = useState<string>('#0f172a');
   const [bgColor, setBgColor] = useState<string>('#ffffff');
   const [showText, setShowText] = useState<boolean>(true);
-  const [fontSize, setFontSize] = useState<number>(16);
-  const [margin, setMargin] = useState<number>(10);
+  const [fontSize, setFontSize] = useState<number>(14);
+  const [margin, setMargin] = useState<number>(5);
   const [copied, setCopied] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
+
+  // A4 Sheet Layout State
+  const [a4Cols, setA4Cols] = useState<number>(3);
+  const [a4Rows, setA4Rows] = useState<number>(7);
+  const [a4Quantity, setA4Quantity] = useState<number>(21);
+  const [showCutLines, setShowCutLines] = useState<boolean>(true);
 
   // Bulk Generator State
   const [bulkPrefix, setBulkPrefix] = useState<string>('PROD-');
@@ -107,7 +114,7 @@ export default function App() {
           qrCanvasRef.current,
           value || 'https://example.com',
           {
-            width: barHeight * 2,
+            width: barHeight * 1.8,
             margin: 2,
             color: {
               dark: lineColor,
@@ -321,14 +328,14 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
       {/* Toast Notification */}
       {notification && (
-        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium animate-fade-in border border-slate-700">
+        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-medium animate-fade-in border border-slate-700 print:hidden">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{notification}</span>
         </div>
       )}
 
       {/* Top Bar Contract (3 zones) */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-8 sticky top-0 z-40 shadow-xs">
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-8 sticky top-0 z-40 shadow-xs print:hidden">
         {/* Zone 1: Brand wordmark */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
@@ -341,18 +348,27 @@ export default function App() {
         </div>
 
         {/* Zone 2: Navigation links */}
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+        <nav className="hidden xl:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('single')}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'single' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             สร้างบาร์โค้ดเดี่ยว
           </button>
           <button
+            onClick={() => setActiveTab('a4-print')}
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'a4-print' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-blue-600" />
+            จัดหน้า A4 & พิมพ์สติกเกอร์
+          </button>
+          <button
             onClick={() => setActiveTab('bulk')}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'bulk' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -360,7 +376,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('templates')}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'templates' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -368,20 +384,20 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('ai')}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               activeTab === 'ai' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-600 hover:bg-indigo-50'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            ผู้ช่วย AI อัจฉริยะ
+            ผู้ช่วย AI
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
+            className={`px-3.5 py-2 text-xs font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'history' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            ประวัติการสร้าง
+            ประวัติ
           </button>
         </nav>
 
@@ -398,7 +414,7 @@ export default function App() {
       </header>
 
       {/* Mobile Nav Subbar */}
-      <div className="flex lg:hidden overflow-x-auto bg-white border-b border-slate-200 px-4 py-2 gap-2 scrollbar-none">
+      <div className="flex xl:hidden overflow-x-auto bg-white border-b border-slate-200 px-4 py-2 gap-2 scrollbar-none print:hidden">
         <button
           onClick={() => setActiveTab('single')}
           className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap ${
@@ -406,6 +422,14 @@ export default function App() {
           }`}
         >
           สร้างเดี่ยว
+        </button>
+        <button
+          onClick={() => setActiveTab('a4-print')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap flex items-center gap-1 ${
+            activeTab === 'a4-print' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'
+          }`}
+        >
+          <LayoutGrid className="w-3 h-3" /> จัดหน้า A4
         </button>
         <button
           onClick={() => setActiveTab('bulk')}
@@ -429,7 +453,7 @@ export default function App() {
             activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700'
           }`}
         >
-          <Sparkles className="w-3 h-3" /> AI ผู้ช่วย
+          <Sparkles className="w-3 h-3" /> AI
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -442,12 +466,12 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 print:max-w-none">
         {/* ================= TAB 1: SINGLE BARCODE ================= */}
         {activeTab === 'single' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Column: Controls */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-6 print:hidden">
               <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-5">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                   <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
@@ -550,8 +574,8 @@ export default function App() {
                       </div>
                       <input
                         type="range"
-                        min="50"
-                        max="200"
+                        min="40"
+                        max="150"
                         value={barHeight}
                         onChange={(e) => setBarHeight(Number(e.target.value))}
                         className="w-full accent-slate-900"
@@ -604,15 +628,15 @@ export default function App() {
 
             {/* Right Column: Live Preview & Action Buttons */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-6 sticky top-24 print:border-none print:shadow-none">
-                <div className="w-full flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-6 sticky top-24 print:border-none print:shadow-none print:p-0">
+                <div className="w-full flex items-center justify-between border-b border-slate-100 pb-3 print:hidden">
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">ตัวอย่างป้ายสินค้าและบาร์โค้ด</span>
                   <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">{symbology}</span>
                 </div>
 
                 {/* Printable Label Card Mockup */}
                 <div
-                  className="w-full max-w-sm p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center space-y-4 print:shadow-none print:border-none"
+                  className="w-full max-w-sm p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center space-y-4 print:shadow-none print:border-none print:w-full print:m-0"
                   style={{ backgroundColor: bgColor }}
                 >
                   {title && <h3 className="text-base font-bold text-slate-900 truncate max-w-full">{title}</h3>}
@@ -636,7 +660,7 @@ export default function App() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-3 w-full">
+                <div className="grid grid-cols-2 gap-3 w-full print:hidden">
                   <button
                     onClick={handleDownloadPNG}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
@@ -665,7 +689,7 @@ export default function App() {
 
                 <button
                   onClick={handlePrint}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all shadow-sm"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all shadow-sm print:hidden"
                 >
                   <Printer className="w-4 h-4" />
                   พิมพ์ออกเครื่องพิมพ์ (Direct Print)
@@ -675,10 +699,152 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 2: BULK GENERATOR ================= */}
+        {/* ================= TAB 2: A4 SHEET LAYOUT & STICKER PRINT ================= */}
+        {activeTab === 'a4-print' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6 print:hidden">
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-blue-600" />
+                  จัดหน้ากระดาษ A4 สำหรับพิมพ์สติกเกอร์หลายดวง
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">กำหนดรูปแบบตาราง คอลัมน์ แถว และจำนวนดวงที่ต้องการพิมพ์ลงบนกระดาษ A4 1 แผ่นหรือหลายแผ่น</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">รูปแบบตารางสำเร็จรูป</label>
+                  <select
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '3x7') { setA4Cols(3); setA4Rows(7); setA4Quantity(21); }
+                      else if (val === '4x10') { setA4Cols(4); setA4Rows(10); setA4Quantity(40); }
+                      else if (val === '2x5') { setA4Cols(2); setA4Rows(5); setA4Quantity(10); }
+                      else if (val === '5x12') { setA4Cols(5); setA4Rows(12); setA4Quantity(60); }
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                  >
+                    <option value="3x7">3 คอลัมน์ x 7 แถว (21 ดวง/แผ่น)</option>
+                    <option value="4x10">4 คอลัมน์ x 10 แถว (40 ดวง/แผ่น)</option>
+                    <option value="2x5">2 คอลัมน์ x 5 แถว (10 ดวง/แผ่น)</option>
+                    <option value="5x12">5 คอลัมน์ x 12 แถว (60 ดวง/แผ่น - ป้ายราคาเล็ก)</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">จำนวนคอลัมน์ (Columns)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={a4Cols}
+                    onChange={(e) => setA4Cols(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">จำนวนแถว (Rows)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={a4Rows}
+                    onChange={(e) => setA4Rows(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">จำนวนดวงที่ต้องการพิมพ์ (Total Qty)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="500"
+                    value={a4Quantity}
+                    onChange={(e) => setA4Quantity(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showCutLines}
+                    onChange={(e) => setShowCutLines(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-300 accent-blue-600"
+                  />
+                  แสดงเส้นประขอบตัดสติกเกอร์ (Cut Guidelines)
+                </label>
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                >
+                  <Printer className="w-4 h-4" /> สั่งพิมพ์กระดาษ A4 ({a4Quantity} ดวง)
+                </button>
+              </div>
+            </div>
+
+            {/* A4 Sheet Visual Preview */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between print:hidden">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">ตัวอย่างหน้ากระดาษ A4 (A4 Grid Preview)</span>
+                <span className="text-xs text-slate-500">รวมทั้งหมด {a4Quantity} ดวง / พิมพ์ลงกระดาษ A4</span>
+              </div>
+
+              <div className="bg-slate-200 p-4 sm:p-8 rounded-2xl flex justify-center overflow-x-auto print:p-0 print:bg-white">
+                {/* A4 Paper Container (210mm x 297mm ratio approx 1:1.414) */}
+                <div className="bg-white w-[210mm] min-h-[297mm] p-[10mm] shadow-2xl flex flex-col justify-start print:shadow-none print:w-full print:h-auto print:p-0">
+                  <div
+                    className="grid gap-2 w-full"
+                    style={{
+                      gridTemplateColumns: `repeat(${a4Cols}, minmax(0, 1fr))`
+                    }}
+                  >
+                    {Array.from({ length: a4Quantity }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 flex flex-col items-center justify-center text-center bg-white rounded-lg ${
+                          showCutLines ? 'border border-dashed border-slate-300' : 'border border-slate-100'
+                        } break-inside-avoid`}
+                        style={{ minHeight: '32mm' }}
+                      >
+                        {title && <div className="text-[10px] font-bold text-slate-900 truncate w-full">{title}</div>}
+                        <div className="my-1 flex items-center justify-center">
+                          {symbology === 'QRCODE' ? (
+                            <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center text-[8px] font-mono">QR</div>
+                          ) : (
+                            <svg
+                              ref={(el) => {
+                                if (el) {
+                                  try {
+                                    JsBarcode(el, value, {
+                                      format: symbology,
+                                      width: 1.2,
+                                      height: 35,
+                                      displayValue: true,
+                                      fontSize: 9,
+                                      margin: 2
+                                    });
+                                  } catch (e) {}
+                                }
+                              }}
+                            />
+                          )}
+                        </div>
+                        {price && <div className="text-[10px] font-extrabold text-emerald-600">฿{price}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 3: BULK GENERATOR ================= */}
         {activeTab === 'bulk' && (
           <div className="space-y-8">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6 print:hidden">
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-slate-600" />
@@ -753,7 +919,7 @@ export default function App() {
             {/* Bulk Results Grid */}
             {bulkList.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between print:hidden">
                   <h3 className="text-sm font-bold text-slate-900">รายการที่สร้างทั้งหมด ({bulkList.length} รายการ)</h3>
                   <button
                     onClick={handlePrint}
@@ -765,7 +931,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {bulkList.map((item, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col items-center text-center space-y-2">
+                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col items-center text-center space-y-2 break-inside-avoid">
                       <span className="text-xs font-bold text-slate-700 truncate w-full">{item.name}</span>
                       <div className="bg-slate-50 p-2 rounded-lg w-full flex justify-center">
                         <svg
@@ -794,10 +960,10 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 3: TEMPLATES ================= */}
+        {/* ================= TAB 4: TEMPLATES ================= */}
         {activeTab === 'templates' && (
           <div className="space-y-6">
-            <div className="border-b border-slate-200 pb-4">
+            <div className="border-b border-slate-200 pb-4 print:hidden">
               <h2 className="text-base font-semibold text-slate-900">เทมเพลตฉลากสินค้าสำเร็จรูป (Ready-made Templates)</h2>
               <p className="text-xs text-slate-500 mt-1">เลือกรูปแบบฉลากมาตรฐานที่ใช้งานบ่อยในธุรกิจค้าปลีก คลังสินค้า และโลจิสติกส์</p>
             </div>
@@ -825,7 +991,7 @@ export default function App() {
                     setActiveTab('single');
                     showToast('โหลดเทมเพลตป้ายราคาสำเร็จ');
                   }}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors print:hidden"
                 >
                   เลือกใช้งานเทมเพลตนี้
                 </button>
@@ -854,7 +1020,7 @@ export default function App() {
                     setActiveTab('single');
                     showToast('โหลดเทมเพลตป้ายทรัพย์สินสำเร็จ');
                   }}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors print:hidden"
                 >
                   เลือกใช้งานเทมเพลตนี้
                 </button>
@@ -883,7 +1049,7 @@ export default function App() {
                     setActiveTab('single');
                     showToast('โหลดเทมเพลต QR ขนส่งสำเร็จ');
                   }}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors"
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors print:hidden"
                 >
                   เลือกใช้งานเทมเพลตนี้
                 </button>
@@ -892,9 +1058,9 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 4: AI ASSISTANT ================= */}
+        {/* ================= TAB 5: AI ASSISTANT ================= */}
         {activeTab === 'ai' && (
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-2xl mx-auto space-y-6 print:hidden">
             <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-8 shadow-xl space-y-6 relative overflow-hidden">
               <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
               
@@ -945,9 +1111,9 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= TAB 5: HISTORY ================= */}
+        {/* ================= TAB 6: HISTORY ================= */}
         {activeTab === 'history' && (
-          <div className="space-y-6">
+          <div className="space-y-6 print:hidden">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">ประวัติการสร้างบาร์โค้ด</h2>
@@ -1009,7 +1175,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6 px-6 text-center text-xs text-slate-500">
+      <footer className="bg-white border-t border-slate-200 py-6 px-6 text-center text-xs text-slate-500 print:hidden">
         <p>© 2026 BarcodeMaster Pro. Professional Barcode & QR Code Suite.</p>
       </footer>
     </div>
